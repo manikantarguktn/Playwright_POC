@@ -1,0 +1,1 @@
+export { WebTablePage } from './WebTablePage';

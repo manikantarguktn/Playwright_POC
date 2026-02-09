@@ -1,0 +1,1 @@
+npx playwright test tests/web-table-data-extraction.spec.ts --headed
