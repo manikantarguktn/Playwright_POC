@@ -17,12 +17,17 @@ export default defineConfig({
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
   forbidOnly: !!process.env.CI,
-  /* Retry on CI only */
-  retries: process.env.CI ? 2 : 0,
-  /* Opt out of parallel tests on CI. */
-  workers: process.env.CI ? 1 : undefined,
+  /* Retry configuration - allow customization via environment variables */
+  retries: process.env.PW_RETRIES ? parseInt(process.env.PW_RETRIES) : (process.env.CI ? 1 : 0),
+  /* Worker configuration - allow customization via environment variables */
+  workers: process.env.PW_WORKERS ? parseInt(process.env.PW_WORKERS) : (process.env.CI ? 1 : undefined),
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
-  reporter: 'html',
+  reporter: [
+    ['github'],
+    ['html', { outputFolder: 'playwright-report' }],
+    ['list'],
+    ['json', { outputFile: 'test-results/results.json' }],
+  ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('')`. */
@@ -30,6 +35,10 @@ export default defineConfig({
 
     /* Collect trace when retrying the failed test. See https://playwright.dev/docs/trace-viewer */
     trace: 'on-first-retry',
+    /* Record video on failure */
+    video: process.env.PW_VIDEO !== 'false' ? 'retain-on-failure' : 'off',
+    /* Headed mode support */
+    headless: process.env.PW_HEADED !== 'true',
   },
 
   /* Configure projects for major browsers */

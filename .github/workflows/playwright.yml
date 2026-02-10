@@ -19,8 +19,16 @@ jobs:
       run: npx playwright install --with-deps
     - name: Run Playwright tests
       run: npx playwright test
-    - name: Display test results
+    - name: Publish test results
       if: ${{ !cancelled() }}
-      run: |
-        Write-Host "Test Results Summary:" -ForegroundColor Green
-        Get-Content playwright-report/index.html -ErrorAction SilentlyContinue | Select-Object -First 50
+      uses: EnricoMi/publish-unit-test-result-action/composite@v2
+      with:
+        files: test-results/results.json
+        check_name: Playwright Test Results
+    - name: Upload Playwright Report
+      if: ${{ !cancelled() }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: playwright-report
+        path: playwright-report/
+        retention-days: 30

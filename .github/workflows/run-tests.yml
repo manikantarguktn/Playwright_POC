@@ -1,0 +1,178 @@
+name: Run Playwright Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run tests on'
+        required: true
+        default: 'main'
+        type: choice
+        options:
+          - main
+          - develop
+          - staging
+          - custom
+      custom_branch:
+        description: 'Custom branch name (if "custom" selected above)'
+        required: false
+        type: string
+      test_type:
+        description: 'Test execution type'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - single_file
+          - folder
+      test_file:
+        description: 'Single test file path (e.g., tests/example.spec.ts) - Required for "single_file"'
+        required: false
+        type: string
+      test_folder:
+        description: 'Test folder path (e.g., tests) - Required for "folder"'
+        required: false
+        type: string
+      retries:
+        description: 'Number of retries for failed tests'
+        required: true
+        default: '1'
+        type: string
+      workers:
+        description: 'Number of workers for parallel execution'
+        required: true
+        default: '1'
+        type: string
+      headed_mode:
+        description: 'Run tests in headed mode (with browser UI)'
+        required: false
+        type: boolean
+        default: false
+
+env:
+  PW_RETRIES: ${{ inputs.retries }}
+  PW_WORKERS: ${{ inputs.workers }}
+  PW_HEADED: ${{ inputs.headed_mode }}
+  PW_VIDEO: 'true'
+  CI: true
+
+jobs:
+  test:
+    timeout-minutes: 60
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Determine branch
+        id: branch
+        run: |
+          if [ "${{ inputs.branch }}" = "custom" ]; then
+            echo "target_branch=${{ inputs.custom_branch }}" >> $GITHUB_OUTPUT
+          else
+            echo "target_branch=${{ inputs.branch }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.branch.outputs.target_branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps
+
+      - name: Determine test target
+        id: test_target
+        run: |
+          if [ "${{ inputs.test_type }}" = "single_file" ]; then
+            if [ -z "${{ inputs.test_file }}" ]; then
+              echo "::error::Test file path is required for 'single_file' option"
+              exit 1
+            fi
+            echo "target=${{ inputs.test_file }}" >> $GITHUB_OUTPUT
+            echo "description=Running single test file: ${{ inputs.test_file }}" >> $GITHUB_OUTPUT
+          elif [ "${{ inputs.test_type }}" = "folder" ]; then
+            if [ -z "${{ inputs.test_folder }}" ]; then
+              echo "::error::Test folder path is required for 'folder' option"
+              exit 1
+            fi
+            echo "target=${{ inputs.test_folder }}" >> $GITHUB_OUTPUT
+            echo "description=Running tests from folder: ${{ inputs.test_folder }}" >> $GITHUB_OUTPUT
+          else
+            echo "target=" >> $GITHUB_OUTPUT
+            echo "description=Running all tests" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Display test configuration
+        run: |
+          echo "====== TEST CONFIGURATION ======"
+          echo "${{ steps.test_target.outputs.description }}"
+          echo "Branch: ${{ steps.branch.outputs.target_branch }}"
+          echo "Retries: ${{ inputs.retries }}"
+          echo "Workers: ${{ inputs.workers }}"
+          echo "Headed Mode: ${{ inputs.headed_mode }}"
+          echo "Video Recording: Enabled"
+          echo "=============================="
+
+      - name: Run Playwright tests
+        run: |
+          if [ -n "${{ steps.test_target.outputs.target }}" ]; then
+            npx playwright test ${{ steps.test_target.outputs.target }}
+          else
+            npx playwright test
+          fi
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload videos
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-videos
+          path: test-results/
+          retention-days: 15
+
+      - name: Publish report to GitHub Pages
+        if: always()
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: playwright-report
+          destination_dir: ${{ github.run_number }}
+
+      - name: Comment on job with report link
+        if: always()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const reportUrl = `https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_number }}/index.html`;
+            
+            const testStatus = '${{ job.status }}';
+            const statusEmoji = testStatus === 'success' ? '✅' : '❌';
+            
+            console.log(`${statusEmoji} Test Status: ${testStatus}`);
+            console.log(`📊 Playwright HTML Report: ${reportUrl}`);
+            console.log(`\nReport available at: ${reportUrl}`);
+
+      - name: Test Summary
+        if: always()
+        run: |
+          echo "====== TEST EXECUTION COMPLETED ======"
+          echo "Status: ${{ job.status }}"
+          echo "Run ID: ${{ github.run_id }}"
+          echo "Report URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_number }}/index.html"
+          echo "======================================="
