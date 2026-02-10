@@ -1,4 +1,4 @@
-name: Playwright Tests New
+name: Playwright Tests
 
 on:
   workflow_dispatch:
@@ -74,9 +74,9 @@ jobs:
               echo "Error: test_script is required when test_mode is 'single'"
               exit 1
             fi
-            echo "test_file=tests/**/${{ inputs.test_script }}" >> $GITHUB_OUTPUT
+            echo "test_file=src/tests/**/${{ inputs.test_script }}" >> $GITHUB_OUTPUT
           else
-            echo "test_file=tests/${{ inputs.test_folder }}" >> $GITHUB_OUTPUT
+            echo "test_file=src/tests/${{ inputs.test_folder }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Run Playwright tests
@@ -112,6 +112,11 @@ jobs:
         uses: actions/github-script@v7
         with:
           script: |
-            const reportUrl = https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/reports/${{ github.run_id }}/index.html;
-            console.log(📊 Playwright HTML Report: ${reportUrl});
-            core.notice(📊 Playwright HTML Report: ${reportUrl});
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const runId = context.runId;
+
+            const reportUrl = `https://${owner}.github.io/${repo}/reports/${runId}/index.html`;
+
+            console.log(`📊 Playwright HTML Report: ${reportUrl}`);
+            core.notice(`📊 Playwright HTML Report: ${reportUrl}`);
