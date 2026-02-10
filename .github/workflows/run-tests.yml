@@ -115,6 +115,9 @@ jobs:
             const owner = context.repo.owner;
             const repo = context.repo.repo;
             const runId = context.runId;
+
+            const reportUrl = `https://${owner}.github.io/${repo}/reports/${runId}/index.html`;
+
             
 
             console.log(`📊 Playwright HTML Report: ${reportUrl}`);
