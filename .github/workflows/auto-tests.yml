@@ -12,6 +12,11 @@ env:
   PW_VIDEO: 'true'
   CI: true
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
 jobs:
   test:
     timeout-minutes: 60
@@ -52,13 +57,26 @@ jobs:
           path: test-results/
           retention-days: 15
 
-      - name: Publish report to GitHub Pages
+      - name: Copy report for deployment
         if: always()
-        uses: peaceiris/actions-gh-pages@v3
+        run: |
+          mkdir -p deploy/${{ github.run_number }}
+          cp -r playwright-report/* deploy/${{ github.run_number }}/
+
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: playwright-report
-          destination_dir: ${{ github.run_number }}
+          name: github-pages
+          path: deploy
+          retention-days: 1
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
 
       - name: Test Summary
         if: always()
@@ -67,5 +85,10 @@ jobs:
           echo "Status: ${{ job.status }}"
           echo "Branch: ${{ github.ref }}"
           echo "Commit: ${{ github.sha }}"
-          echo "Report URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_number }}/index.html"
+          echo "Deployment Status: ${{ steps.deployment.outcome }}"
+          echo ""
+          echo "📊 Report URL:"
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_number }}/index.html"
+          echo ""
+          echo "⏱️ It may take 1-2 minutes for the report to be available on GitHub Pages"
           echo "======================================"

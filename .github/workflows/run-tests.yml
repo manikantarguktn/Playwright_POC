@@ -135,7 +135,7 @@ jobs:
             npx playwright test
           fi
 
-      - name: Upload test results
+      - name: Upload test results as artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -151,14 +151,26 @@ jobs:
           path: test-results/
           retention-days: 15
 
-      - name: Publish report to GitHub Pages
+      - name: Copy report for deployment
         if: always()
-        uses: peaceiris/actions-gh-pages@v4
+        run: |
+          mkdir -p deploy/${{ github.run_number }}
+          cp -r playwright-report/* deploy/${{ github.run_number }}/
+
+      - name: Upload Pages artifact
+        if: always()
+        uses: actions/upload-artifact@v4
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: playwright-report
-          destination_dir: ${{ github.run_number }}
-          force_orphan: true
+          name: github-pages
+          path: deploy
+          retention-days: 1
+
+      - name: Deploy to GitHub Pages
+        if: always()
+        id: deployment
+        uses: actions/deploy-pages@v4
+        with:
+          artifact_name: github-pages
 
       - name: Comment on job with report link
         if: always()
@@ -180,5 +192,11 @@ jobs:
           echo "====== TEST EXECUTION COMPLETED ======"
           echo "Status: ${{ job.status }}"
           echo "Run ID: ${{ github.run_id }}"
-          echo "Report URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_number }}/index.html"
+          echo "Deployment Status: ${{ steps.deployment.outcome }}"
+          echo "======================================="
+          echo ""
+          echo "📊 Report URL:"
+          echo "https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/${{ github.run_number }}/index.html"
+          echo ""
+          echo "⏱️ It may take 1-2 minutes for the report to be available on GitHub Pages"
           echo "======================================="
