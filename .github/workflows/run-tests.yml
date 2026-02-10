@@ -1,9 +1,44 @@
-name: Playwright Tests
+name: Playwright Tests New
+
 on:
-  push:
-    branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to run tests on'
+        required: true
+        default: 'main'
+        type: string
+      test_mode:
+        description: 'Select test execution mode'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - single
+          - all
+      test_folder:
+        description: 'Select test folder (only used when mode is "all")'
+        required: false
+        default: 'e2e'
+        type: choice
+        options:
+          - e2e
+          - smoke
+      test_script:
+        description: 'Specific test script to run (only used when mode is "single")'
+        required: false
+        type: string
+        placeholder: 'e.g., e2e-001-valid-login.spec.ts'
+      retries:
+        description: 'Number of retries for failed tests'
+        required: false
+        default: '1'
+        type: string
+      workers:
+        description: 'Number of parallel workers'
+        required: false
+        default: '1'
+        type: string
 
 jobs:
   test:
