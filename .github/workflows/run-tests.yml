@@ -74,9 +74,9 @@ jobs:
               echo "Error: test_script is required when test_mode is 'single'"
               exit 1
             fi
-            echo "test_file=src/tests/**/${{ inputs.test_script }}" >> $GITHUB_OUTPUT
+            echo "test_file=tests/**/${{ inputs.test_script }}" >> $GITHUB_OUTPUT
           else
-            echo "test_file=src/tests/${{ inputs.test_folder }}" >> $GITHUB_OUTPUT
+            echo "test_file=tests/${{ inputs.test_folder }}" >> $GITHUB_OUTPUT
           fi
 
       - name: Run Playwright tests
